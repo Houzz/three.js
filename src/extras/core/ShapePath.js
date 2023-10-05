@@ -1,27 +1,22 @@
-/**
- * @author zz85 / http://www.lab4games.net/zz85/blog
- * minimal class for proxing functions to Path. Replaces old "extractSubpaths()"
- **/
-
 import { Color } from '../../math/Color.js';
 import { Path } from './Path.js';
 import { Shape } from './Shape.js';
 import { ShapeUtils } from '../ShapeUtils.js';
 
-function ShapePath() {
+class ShapePath {
 
-	this.type = 'ShapePath';
+	constructor() {
 
-	this.color = new Color();
+		this.type = 'ShapePath';
 
-	this.subPaths = [];
-	this.currentPath = null;
+		this.color = new Color();
 
-}
+		this.subPaths = [];
+		this.currentPath = null;
 
-Object.assign( ShapePath.prototype, {
+	}
 
-	moveTo: function ( x, y ) {
+	moveTo( x, y ) {
 
 		this.currentPath = new Path();
 		this.subPaths.push( this.currentPath );
@@ -29,41 +24,41 @@ Object.assign( ShapePath.prototype, {
 
 		return this;
 
-	},
+	}
 
-	lineTo: function ( x, y ) {
+	lineTo( x, y ) {
 
 		this.currentPath.lineTo( x, y );
 
 		return this;
 
-	},
+	}
 
-	quadraticCurveTo: function ( aCPx, aCPy, aX, aY ) {
+	quadraticCurveTo( aCPx, aCPy, aX, aY ) {
 
 		this.currentPath.quadraticCurveTo( aCPx, aCPy, aX, aY );
 
 		return this;
 
-	},
+	}
 
-	bezierCurveTo: function ( aCP1x, aCP1y, aCP2x, aCP2y, aX, aY ) {
+	bezierCurveTo( aCP1x, aCP1y, aCP2x, aCP2y, aX, aY ) {
 
 		this.currentPath.bezierCurveTo( aCP1x, aCP1y, aCP2x, aCP2y, aX, aY );
 
 		return this;
 
-	},
+	}
 
-	splineThru: function ( pts ) {
+	splineThru( pts ) {
 
 		this.currentPath.splineThru( pts );
 
 		return this;
 
-	},
+	}
 
-	toShapes: function ( isCCW, noHoles ) {
+	toShapes( isCCW ) {
 
 		function toShapesNoHoles( inSubpaths ) {
 
@@ -149,10 +144,8 @@ Object.assign( ShapePath.prototype, {
 		const subPaths = this.subPaths;
 		if ( subPaths.length === 0 ) return [];
 
-		if ( noHoles === true )	return	toShapesNoHoles( subPaths );
-
-
-		let solid, tmpPath, tmpShape, shapes = [];
+		let solid, tmpPath, tmpShape;
+		const shapes = [];
 
 		if ( subPaths.length === 1 ) {
 
@@ -214,7 +207,7 @@ Object.assign( ShapePath.prototype, {
 		if ( newShapes.length > 1 ) {
 
 			let ambiguous = false;
-			const toChange = [];
+			let toChange = 0;
 
 			for ( let sIdx = 0, sLen = newShapes.length; sIdx < sLen; sIdx ++ ) {
 
@@ -235,7 +228,8 @@ Object.assign( ShapePath.prototype, {
 
 						if ( isPointInsidePolygon( ho.p, newShapes[ s2Idx ].p ) ) {
 
-							if ( sIdx !== s2Idx )	toChange.push( { froms: sIdx, tos: s2Idx, hole: hIdx } );
+							if ( sIdx !== s2Idx )	toChange ++;
+
 							if ( hole_unassigned ) {
 
 								hole_unassigned = false;
@@ -260,12 +254,10 @@ Object.assign( ShapePath.prototype, {
 				}
 
 			}
-			// console.log("ambiguous: ", ambiguous);
 
-			if ( toChange.length > 0 ) {
+			if ( toChange > 0 && ambiguous === false ) {
 
-				// console.log("to change: ", toChange);
-				if ( ! ambiguous )	newShapeHoles = betterShapeHoles;
+				newShapeHoles = betterShapeHoles;
 
 			}
 
@@ -293,7 +285,7 @@ Object.assign( ShapePath.prototype, {
 
 	}
 
-} );
+}
 
 
 export { ShapePath };

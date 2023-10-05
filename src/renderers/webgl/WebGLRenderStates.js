@@ -1,12 +1,8 @@
-/**
- * @author Mugen87 / https://github.com/Mugen87
- */
-
 import { WebGLLights } from './WebGLLights.js';
 
-function WebGLRenderState() {
+function WebGLRenderState( extensions, capabilities ) {
 
-	const lights = new WebGLLights();
+	const lights = new WebGLLights( extensions, capabilities );
 
 	const lightsArray = [];
 	const shadowsArray = [];
@@ -30,9 +26,15 @@ function WebGLRenderState() {
 
 	}
 
-	function setupLights( camera ) {
+	function setupLights( useLegacyLights ) {
 
-		lights.setup( lightsArray, shadowsArray, camera );
+		lights.setup( lightsArray, useLegacyLights );
+
+	}
+
+	function setupLightsView( camera ) {
+
+		lights.setupView( lightsArray, camera );
 
 	}
 
@@ -47,6 +49,7 @@ function WebGLRenderState() {
 		init: init,
 		state: state,
 		setupLights: setupLights,
+		setupLightsView: setupLightsView,
 
 		pushLight: pushLight,
 		pushShadow: pushShadow
@@ -54,42 +57,30 @@ function WebGLRenderState() {
 
 }
 
-function WebGLRenderStates() {
+function WebGLRenderStates( extensions, capabilities ) {
 
 	let renderStates = new WeakMap();
 
-	function onSceneDispose( event ) {
+	function get( scene, renderCallDepth = 0 ) {
 
-		const scene = event.target;
-
-		scene.removeEventListener( 'dispose', onSceneDispose );
-
-		renderStates.delete( scene );
-
-	}
-
-	function get( scene, camera ) {
-
+		const renderStateArray = renderStates.get( scene );
 		let renderState;
 
-		if ( renderStates.has( scene ) === false ) {
+		if ( renderStateArray === undefined ) {
 
-			renderState = new WebGLRenderState();
-			renderStates.set( scene, new WeakMap() );
-			renderStates.get( scene ).set( camera, renderState );
-
-			scene.addEventListener( 'dispose', onSceneDispose );
+			renderState = new WebGLRenderState( extensions, capabilities );
+			renderStates.set( scene, [ renderState ] );
 
 		} else {
 
-			if ( renderStates.get( scene ).has( camera ) === false ) {
+			if ( renderCallDepth >= renderStateArray.length ) {
 
-				renderState = new WebGLRenderState();
-				renderStates.get( scene ).set( camera, renderState );
+				renderState = new WebGLRenderState( extensions, capabilities );
+				renderStateArray.push( renderState );
 
 			} else {
 
-				renderState = renderStates.get( scene ).get( camera );
+				renderState = renderStateArray[ renderCallDepth ];
 
 			}
 

@@ -1,38 +1,31 @@
 import { Curve } from './Curve.js';
 import * as Curves from '../curves/Curves.js';
 
-/**
- * @author zz85 / http://www.lab4games.net/zz85/blog
- *
- **/
-
 /**************************************************************
  *	Curved Path - a curve path is simply a array of connected
  *  curves, but retains the api of a curve
  **************************************************************/
 
-function CurvePath() {
+class CurvePath extends Curve {
 
-	Curve.call( this );
+	constructor() {
 
-	this.type = 'CurvePath';
+		super();
 
-	this.curves = [];
-	this.autoClose = false; // Automatically closes the path
+		this.type = 'CurvePath';
 
-}
+		this.curves = [];
+		this.autoClose = false; // Automatically closes the path
 
-CurvePath.prototype = Object.assign( Object.create( Curve.prototype ), {
+	}
 
-	constructor: CurvePath,
-
-	add: function ( curve ) {
+	add( curve ) {
 
 		this.curves.push( curve );
 
-	},
+	}
 
-	closePath: function () {
+	closePath() {
 
 		// Add a line curve if start and end of lines are not connected
 		const startPoint = this.curves[ 0 ].getPoint( 0 );
@@ -40,11 +33,14 @@ CurvePath.prototype = Object.assign( Object.create( Curve.prototype ), {
 
 		if ( ! startPoint.equals( endPoint ) ) {
 
-			this.curves.push( new Curves[ 'LineCurve' ]( endPoint, startPoint ) );
+			const lineType = ( startPoint.isVector2 === true ) ? 'LineCurve' : 'LineCurve3';
+			this.curves.push( new Curves[ lineType ]( endPoint, startPoint ) );
 
 		}
 
-	},
+		return this;
+
+	}
 
 	// To get accurate point with reference to
 	// entire path distance at time t,
@@ -55,7 +51,7 @@ CurvePath.prototype = Object.assign( Object.create( Curve.prototype ), {
 	// 3. Get t for the curve
 	// 4. Return curve.getPointAt(t')
 
-	getPoint: function ( t ) {
+	getPoint( t, optionalTarget ) {
 
 		const d = t * this.getLength();
 		const curveLengths = this.getCurveLengths();
@@ -73,7 +69,7 @@ CurvePath.prototype = Object.assign( Object.create( Curve.prototype ), {
 				const segmentLength = curve.getLength();
 				const u = segmentLength === 0 ? 0 : 1 - diff / segmentLength;
 
-				return curve.getPointAt( u );
+				return curve.getPointAt( u, optionalTarget );
 
 			}
 
@@ -85,32 +81,32 @@ CurvePath.prototype = Object.assign( Object.create( Curve.prototype ), {
 
 		// loop where sum != 0, sum > d , sum+1 <d
 
-	},
+	}
 
 	// We cannot use the default THREE.Curve getPoint() with getLength() because in
 	// THREE.Curve, getLength() depends on getPoint() but in THREE.CurvePath
 	// getPoint() depends on getLength
 
-	getLength: function () {
+	getLength() {
 
 		const lens = this.getCurveLengths();
 		return lens[ lens.length - 1 ];
 
-	},
+	}
 
 	// cacheLengths must be recalculated.
-	updateArcLengths: function () {
+	updateArcLengths() {
 
 		this.needsUpdate = true;
 		this.cacheLengths = null;
 		this.getCurveLengths();
 
-	},
+	}
 
 	// Compute lengths and cache them
 	// We cannot overwrite getLengths() because UtoT mapping uses it.
 
-	getCurveLengths: function () {
+	getCurveLengths() {
 
 		// We use cache values if curves and cache array are same length
 
@@ -137,11 +133,9 @@ CurvePath.prototype = Object.assign( Object.create( Curve.prototype ), {
 
 		return lengths;
 
-	},
+	}
 
-	getSpacedPoints: function ( divisions ) {
-
-		if ( divisions === undefined ) divisions = 40;
+	getSpacedPoints( divisions = 40 ) {
 
 		const points = [];
 
@@ -159,11 +153,9 @@ CurvePath.prototype = Object.assign( Object.create( Curve.prototype ), {
 
 		return points;
 
-	},
+	}
 
-	getPoints: function ( divisions ) {
-
-		divisions = divisions || 12;
+	getPoints( divisions = 12 ) {
 
 		const points = [];
 		let last;
@@ -171,9 +163,9 @@ CurvePath.prototype = Object.assign( Object.create( Curve.prototype ), {
 		for ( let i = 0, curves = this.curves; i < curves.length; i ++ ) {
 
 			const curve = curves[ i ];
-			const resolution = ( curve && curve.isEllipseCurve ) ? divisions * 2
-				: ( curve && ( curve.isLineCurve || curve.isLineCurve3 ) ) ? 1
-					: ( curve && curve.isSplineCurve ) ? divisions * curve.points.length
+			const resolution = curve.isEllipseCurve ? divisions * 2
+				: ( curve.isLineCurve || curve.isLineCurve3 ) ? 1
+					: curve.isSplineCurve ? divisions * curve.points.length
 						: divisions;
 
 			const pts = curve.getPoints( resolution );
@@ -199,11 +191,11 @@ CurvePath.prototype = Object.assign( Object.create( Curve.prototype ), {
 
 		return points;
 
-	},
+	}
 
-	copy: function ( source ) {
+	copy( source ) {
 
-		Curve.prototype.copy.call( this, source );
+		super.copy( source );
 
 		this.curves = [];
 
@@ -219,11 +211,11 @@ CurvePath.prototype = Object.assign( Object.create( Curve.prototype ), {
 
 		return this;
 
-	},
+	}
 
-	toJSON: function () {
+	toJSON() {
 
-		const data = Curve.prototype.toJSON.call( this );
+		const data = super.toJSON();
 
 		data.autoClose = this.autoClose;
 		data.curves = [];
@@ -237,11 +229,11 @@ CurvePath.prototype = Object.assign( Object.create( Curve.prototype ), {
 
 		return data;
 
-	},
+	}
 
-	fromJSON: function ( json ) {
+	fromJSON( json ) {
 
-		Curve.prototype.fromJSON.call( this, json );
+		super.fromJSON( json );
 
 		this.autoClose = json.autoClose;
 		this.curves = [];
@@ -257,7 +249,7 @@ CurvePath.prototype = Object.assign( Object.create( Curve.prototype ), {
 
 	}
 
-} );
+}
 
 
 export { CurvePath };

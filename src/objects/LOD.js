@@ -1,43 +1,36 @@
 import { Vector3 } from '../math/Vector3.js';
 import { Object3D } from '../core/Object3D.js';
 
-/**
- * @author mikael emtinger / http://gomo.se/
- * @author alteredq / http://alteredqualia.com/
- * @author mrdoob / http://mrdoob.com/
- */
+const _v1 = /*@__PURE__*/ new Vector3();
+const _v2 = /*@__PURE__*/ new Vector3();
 
-const _v1 = new Vector3();
-const _v2 = new Vector3();
+class LOD extends Object3D {
 
-function LOD() {
+	constructor() {
 
-	Object3D.call( this );
+		super();
 
-	this._currentLevel = 0;
+		this._currentLevel = 0;
 
-	this.type = 'LOD';
+		this.type = 'LOD';
 
-	Object.defineProperties( this, {
-		levels: {
-			enumerable: true,
-			value: []
-		}
-	} );
+		Object.defineProperties( this, {
+			levels: {
+				enumerable: true,
+				value: []
+			},
+			isLOD: {
+				value: true,
+			}
+		} );
 
-	this.autoUpdate = true;
+		this.autoUpdate = true;
 
-}
+	}
 
-LOD.prototype = Object.assign( Object.create( Object3D.prototype ), {
+	copy( source ) {
 
-	constructor: LOD,
-
-	isLOD: true,
-
-	copy: function ( source ) {
-
-		Object3D.prototype.copy.call( this, source, false );
+		super.copy( source, false );
 
 		const levels = source.levels;
 
@@ -45,7 +38,7 @@ LOD.prototype = Object.assign( Object.create( Object3D.prototype ), {
 
 			const level = levels[ i ];
 
-			this.addLevel( level.object.clone(), level.distance );
+			this.addLevel( level.object.clone(), level.distance, level.hysteresis );
 
 		}
 
@@ -53,11 +46,9 @@ LOD.prototype = Object.assign( Object.create( Object3D.prototype ), {
 
 		return this;
 
-	},
+	}
 
-	addLevel: function ( object, distance ) {
-
-		if ( distance === undefined ) distance = 0;
+	addLevel( object, distance = 0, hysteresis = 0 ) {
 
 		distance = Math.abs( distance );
 
@@ -75,21 +66,23 @@ LOD.prototype = Object.assign( Object.create( Object3D.prototype ), {
 
 		}
 
-		levels.splice( l, 0, { distance: distance, object: object } );
+		levels.splice( l, 0, { distance: distance, hysteresis: hysteresis, object: object } );
 
 		this.add( object );
 
 		return this;
 
-	},
+	}
 
-	getCurrentLevel: function () {
+	getCurrentLevel() {
 
 		return this._currentLevel;
 
-	},
+	}
 
-	getObjectForDistance: function ( distance ) {
+
+
+	getObjectForDistance( distance ) {
 
 		const levels = this.levels;
 
@@ -99,7 +92,15 @@ LOD.prototype = Object.assign( Object.create( Object3D.prototype ), {
 
 			for ( i = 1, l = levels.length; i < l; i ++ ) {
 
-				if ( distance < levels[ i ].distance ) {
+				let levelDistance = levels[ i ].distance;
+
+				if ( levels[ i ].object.visible ) {
+
+					levelDistance -= levelDistance * levels[ i ].hysteresis;
+
+				}
+
+				if ( distance < levelDistance ) {
 
 					break;
 
@@ -113,9 +114,9 @@ LOD.prototype = Object.assign( Object.create( Object3D.prototype ), {
 
 		return null;
 
-	},
+	}
 
-	raycast: function ( raycaster, intersects ) {
+	raycast( raycaster, intersects ) {
 
 		const levels = this.levels;
 
@@ -129,9 +130,9 @@ LOD.prototype = Object.assign( Object.create( Object3D.prototype ), {
 
 		}
 
-	},
+	}
 
-	update: function ( camera ) {
+	update( camera ) {
 
 		const levels = this.levels;
 
@@ -148,7 +149,15 @@ LOD.prototype = Object.assign( Object.create( Object3D.prototype ), {
 
 			for ( i = 1, l = levels.length; i < l; i ++ ) {
 
-				if ( distance >= levels[ i ].distance ) {
+				let levelDistance = levels[ i ].distance;
+
+				if ( levels[ i ].object.visible ) {
+
+					levelDistance -= levelDistance * levels[ i ].hysteresis;
+
+				}
+
+				if ( distance >= levelDistance ) {
 
 					levels[ i - 1 ].object.visible = false;
 					levels[ i ].object.visible = true;
@@ -171,11 +180,11 @@ LOD.prototype = Object.assign( Object.create( Object3D.prototype ), {
 
 		}
 
-	},
+	}
 
-	toJSON: function ( meta ) {
+	toJSON( meta ) {
 
-		const data = Object3D.prototype.toJSON.call( this, meta );
+		const data = super.toJSON( meta );
 
 		if ( this.autoUpdate === false ) data.object.autoUpdate = false;
 
@@ -189,7 +198,8 @@ LOD.prototype = Object.assign( Object.create( Object3D.prototype ), {
 
 			data.object.levels.push( {
 				object: level.object.uuid,
-				distance: level.distance
+				distance: level.distance,
+				hysteresis: level.hysteresis
 			} );
 
 		}
@@ -198,7 +208,7 @@ LOD.prototype = Object.assign( Object.create( Object3D.prototype ), {
 
 	}
 
-} );
+}
 
 
 export { LOD };

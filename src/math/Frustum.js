@@ -1,34 +1,20 @@
+import { WebGLCoordinateSystem, WebGPUCoordinateSystem } from '../constants.js';
 import { Vector3 } from './Vector3.js';
 import { Sphere } from './Sphere.js';
 import { Plane } from './Plane.js';
 
-/**
- * @author mrdoob / http://mrdoob.com/
- * @author alteredq / http://alteredqualia.com/
- * @author bhouston / http://clara.io
- */
+const _sphere = /*@__PURE__*/ new Sphere();
+const _vector = /*@__PURE__*/ new Vector3();
 
-const _sphere = new Sphere();
-const _vector = new Vector3();
+class Frustum {
 
-function Frustum( p0, p1, p2, p3, p4, p5 ) {
+	constructor( p0 = new Plane(), p1 = new Plane(), p2 = new Plane(), p3 = new Plane(), p4 = new Plane(), p5 = new Plane() ) {
 
-	this.planes = [
+		this.planes = [ p0, p1, p2, p3, p4, p5 ];
 
-		( p0 !== undefined ) ? p0 : new Plane(),
-		( p1 !== undefined ) ? p1 : new Plane(),
-		( p2 !== undefined ) ? p2 : new Plane(),
-		( p3 !== undefined ) ? p3 : new Plane(),
-		( p4 !== undefined ) ? p4 : new Plane(),
-		( p5 !== undefined ) ? p5 : new Plane()
+	}
 
-	];
-
-}
-
-Object.assign( Frustum.prototype, {
-
-	set: function ( p0, p1, p2, p3, p4, p5 ) {
+	set( p0, p1, p2, p3, p4, p5 ) {
 
 		const planes = this.planes;
 
@@ -41,15 +27,9 @@ Object.assign( Frustum.prototype, {
 
 		return this;
 
-	},
+	}
 
-	clone: function () {
-
-		return new this.constructor().copy( this );
-
-	},
-
-	copy: function ( frustum ) {
+	copy( frustum ) {
 
 		const planes = this.planes;
 
@@ -61,9 +41,9 @@ Object.assign( Frustum.prototype, {
 
 		return this;
 
-	},
+	}
 
-	setFromProjectionMatrix: function ( m ) {
+	setFromProjectionMatrix( m, coordinateSystem = WebGLCoordinateSystem ) {
 
 		const planes = this.planes;
 		const me = m.elements;
@@ -77,25 +57,48 @@ Object.assign( Frustum.prototype, {
 		planes[ 2 ].setComponents( me3 + me1, me7 + me5, me11 + me9, me15 + me13 ).normalize();
 		planes[ 3 ].setComponents( me3 - me1, me7 - me5, me11 - me9, me15 - me13 ).normalize();
 		planes[ 4 ].setComponents( me3 - me2, me7 - me6, me11 - me10, me15 - me14 ).normalize();
-		planes[ 5 ].setComponents( me3 + me2, me7 + me6, me11 + me10, me15 + me14 ).normalize();
+
+		if ( coordinateSystem === WebGLCoordinateSystem ) {
+
+			planes[ 5 ].setComponents( me3 + me2, me7 + me6, me11 + me10, me15 + me14 ).normalize();
+
+		} else if ( coordinateSystem === WebGPUCoordinateSystem ) {
+
+			planes[ 5 ].setComponents( me2, me6, me10, me14 ).normalize();
+
+		} else {
+
+			throw new Error( 'THREE.Frustum.setFromProjectionMatrix(): Invalid coordinate system: ' + coordinateSystem );
+
+		}
 
 		return this;
 
-	},
+	}
 
-	intersectsObject: function ( object ) {
+	intersectsObject( object ) {
 
-		const geometry = object.geometry;
+		if ( object.boundingSphere !== undefined ) {
 
-		if ( geometry.boundingSphere === null ) geometry.computeBoundingSphere();
+			if ( object.boundingSphere === null ) object.computeBoundingSphere();
 
-		_sphere.copy( geometry.boundingSphere ).applyMatrix4( object.matrixWorld );
+			_sphere.copy( object.boundingSphere ).applyMatrix4( object.matrixWorld );
+
+		} else {
+
+			const geometry = object.geometry;
+
+			if ( geometry.boundingSphere === null ) geometry.computeBoundingSphere();
+
+			_sphere.copy( geometry.boundingSphere ).applyMatrix4( object.matrixWorld );
+
+		}
 
 		return this.intersectsSphere( _sphere );
 
-	},
+	}
 
-	intersectsSprite: function ( sprite ) {
+	intersectsSprite( sprite ) {
 
 		_sphere.center.set( 0, 0, 0 );
 		_sphere.radius = 0.7071067811865476;
@@ -103,9 +106,9 @@ Object.assign( Frustum.prototype, {
 
 		return this.intersectsSphere( _sphere );
 
-	},
+	}
 
-	intersectsSphere: function ( sphere ) {
+	intersectsSphere( sphere ) {
 
 		const planes = this.planes;
 		const center = sphere.center;
@@ -125,9 +128,9 @@ Object.assign( Frustum.prototype, {
 
 		return true;
 
-	},
+	}
 
-	intersectsBox: function ( box ) {
+	intersectsBox( box ) {
 
 		const planes = this.planes;
 
@@ -151,9 +154,9 @@ Object.assign( Frustum.prototype, {
 
 		return true;
 
-	},
+	}
 
-	containsPoint: function ( point ) {
+	containsPoint( point ) {
 
 		const planes = this.planes;
 
@@ -171,7 +174,13 @@ Object.assign( Frustum.prototype, {
 
 	}
 
-} );
+	clone() {
+
+		return new this.constructor().copy( this );
+
+	}
+
+}
 
 
 export { Frustum };

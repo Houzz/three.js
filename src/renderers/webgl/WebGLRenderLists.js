@@ -1,7 +1,3 @@
-/**
- * @author mrdoob / http://mrdoob.com/
- */
-
 function painterSortStable( a, b ) {
 
 	if ( a.groupOrder !== b.groupOrder ) {
@@ -11,10 +7,6 @@ function painterSortStable( a, b ) {
 	} else if ( a.renderOrder !== b.renderOrder ) {
 
 		return a.renderOrder - b.renderOrder;
-
-	} else if ( a.program !== b.program ) {
-
-		return a.program.id - b.program.id;
 
 	} else if ( a.material.id !== b.material.id ) {
 
@@ -61,15 +53,15 @@ function WebGLRenderList() {
 	let renderItemsIndex = 0;
 
 	const opaque = [];
+	const transmissive = [];
 	const transparent = [];
-
-	const defaultProgram = { id: - 1 };
 
 	function init() {
 
 		renderItemsIndex = 0;
 
 		opaque.length = 0;
+		transmissive.length = 0;
 		transparent.length = 0;
 
 	}
@@ -85,7 +77,6 @@ function WebGLRenderList() {
 				object: object,
 				geometry: geometry,
 				material: material,
-				program: material.program || defaultProgram,
 				groupOrder: groupOrder,
 				renderOrder: object.renderOrder,
 				z: z,
@@ -100,7 +91,6 @@ function WebGLRenderList() {
 			renderItem.object = object;
 			renderItem.geometry = geometry;
 			renderItem.material = material;
-			renderItem.program = material.program || defaultProgram;
 			renderItem.groupOrder = groupOrder;
 			renderItem.renderOrder = object.renderOrder;
 			renderItem.z = z;
@@ -118,7 +108,19 @@ function WebGLRenderList() {
 
 		const renderItem = getNextRenderItem( object, geometry, material, groupOrder, z, group );
 
-		( material.transparent === true ? transparent : opaque ).push( renderItem );
+		if ( material.transmission > 0.0 ) {
+
+			transmissive.push( renderItem );
+
+		} else if ( material.transparent === true ) {
+
+			transparent.push( renderItem );
+
+		} else {
+
+			opaque.push( renderItem );
+
+		}
 
 	}
 
@@ -126,13 +128,26 @@ function WebGLRenderList() {
 
 		const renderItem = getNextRenderItem( object, geometry, material, groupOrder, z, group );
 
-		( material.transparent === true ? transparent : opaque ).unshift( renderItem );
+		if ( material.transmission > 0.0 ) {
+
+			transmissive.unshift( renderItem );
+
+		} else if ( material.transparent === true ) {
+
+			transparent.unshift( renderItem );
+
+		} else {
+
+			opaque.unshift( renderItem );
+
+		}
 
 	}
 
 	function sort( customOpaqueSort, customTransparentSort ) {
 
 		if ( opaque.length > 1 ) opaque.sort( customOpaqueSort || painterSortStable );
+		if ( transmissive.length > 1 ) transmissive.sort( customTransparentSort || reversePainterSortStable );
 		if ( transparent.length > 1 ) transparent.sort( customTransparentSort || reversePainterSortStable );
 
 	}
@@ -151,7 +166,6 @@ function WebGLRenderList() {
 			renderItem.object = null;
 			renderItem.geometry = null;
 			renderItem.material = null;
-			renderItem.program = null;
 			renderItem.group = null;
 
 		}
@@ -161,6 +175,7 @@ function WebGLRenderList() {
 	return {
 
 		opaque: opaque,
+		transmissive: transmissive,
 		transparent: transparent,
 
 		init: init,
@@ -177,36 +192,26 @@ function WebGLRenderLists() {
 
 	let lists = new WeakMap();
 
-	function onSceneDispose( event ) {
+	function get( scene, renderCallDepth ) {
 
-		const scene = event.target;
-
-		scene.removeEventListener( 'dispose', onSceneDispose );
-
-		lists.delete( scene );
-
-	}
-
-	function get( scene, camera ) {
-
-		const cameras = lists.get( scene );
+		const listArray = lists.get( scene );
 		let list;
 
-		if ( cameras === undefined ) {
+		if ( listArray === undefined ) {
 
 			list = new WebGLRenderList();
-			lists.set( scene, new WeakMap() );
-			lists.get( scene ).set( camera, list );
-
-			scene.addEventListener( 'dispose', onSceneDispose );
+			lists.set( scene, [ list ] );
 
 		} else {
 
-			list = cameras.get( camera );
-			if ( list === undefined ) {
+			if ( renderCallDepth >= listArray.length ) {
 
 				list = new WebGLRenderList();
-				cameras.set( camera, list );
+				listArray.push( list );
+
+			} else {
+
+				list = listArray[ renderCallDepth ];
 
 			}
 
